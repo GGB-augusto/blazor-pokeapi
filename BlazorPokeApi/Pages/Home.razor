@@ -1,0 +1,77 @@
+﻿@page "/"
+@using System.Text.Json
+@inject HttpClient Http
+
+<PageTitle>Buscar Pokémon</PageTitle>
+
+<h1>Buscar Pokémon</h1>
+
+<label class="form-label">Nome do Pokémon:</label>
+<input class="form-control" @bind="nomeDigitado" placeholder="Ex: pikachu" />
+<button class="btn btn-primary mt-2" @onclick="BuscarPokemon">Buscar Pokémon</button>
+
+@if (erro != "")
+{
+    <p style="color: red;" class="mt-2">@erro</p>
+}
+
+@if (achou == true)
+{
+    <hr />
+    <h3>Detalhes do Pokémon</h3>
+    <img src="@imagem" width="150" />
+    <p><b>ID:</b> @id</p>
+    <p><b>Nome:</b> @nome</p>
+    <p><b>Altura:</b> @altura m</p>
+    <p><b>Peso:</b> @peso kg</p>
+}
+
+@code {
+    private string nomeDigitado = "";
+    private string erro = "";
+    private bool achou = false;
+
+    private int id;
+    private string nome = "";
+    private string imagem = "";
+    private double altura;
+    private double peso;
+
+    private async Task BuscarPokemon()
+    {
+        erro = "";
+        achou = false;
+
+        if (nomeDigitado == "")
+        {
+            erro = "Digite o nome de um Pokémon.";
+            return;
+        }
+
+        try
+        {
+            // a api so aceita nome em minusculo
+            string url = "https://pokeapi.co/api/v2/pokemon/" + nomeDigitado.Trim().ToLower();
+            string resposta = await Http.GetStringAsync(url);
+
+            JsonDocument json = JsonDocument.Parse(resposta);
+            JsonElement pokemon = json.RootElement;
+
+            id = pokemon.GetProperty("id").GetInt32();
+            nome = pokemon.GetProperty("name").GetString() ?? "";
+
+            // a api manda altura em decimetros e peso em hectogramas, por isso divide por 10
+            altura = pokemon.GetProperty("height").GetInt32() / 10.0;
+            peso = pokemon.GetProperty("weight").GetInt32() / 10.0;
+
+            // imagem do campo official-artwork, como o professor pediu
+            imagem = pokemon.GetProperty("sprites").GetProperty("other").GetProperty("official-artwork").GetProperty("front_default").GetString() ?? "";
+
+            achou = true;
+        }
+        catch
+        {
+            erro = "Pokémon não encontrado. Confira o nome e tente de novo.";
+        }
+    }
+}
